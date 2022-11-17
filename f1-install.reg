@@ -1,0 +1,8 @@
+Windows Registry Editor Version 5.00
+[HKEY_CLASSES_ROOT\F1]
+@="URL:F1 Protocol Handler"
+"URL Protocol"=""
+[HKEY_CLASSES_ROOT\F1\shell]
+[HKEY_CLASSES_ROOT\F1\shell\open]
+[HKEY_CLASSES_ROOT\F1\shell\open\command]
+@="D:\\jdk-18.0.1.1\\bin\\javaw -jar D:\\eclipse-workspace\\openFileMgr\\openFileMgr.jar"

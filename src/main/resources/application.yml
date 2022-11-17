@@ -1,0 +1,56 @@
+server:
+  port: 8082
+  session-timeout: 30
+  tomcat.max-threads: 0
+  tomcat.uri-encoding: UTF-8
+#基本属性
+spring:
+  datasource:
+    master:
+      #MySQL连接信息，后面一连串的是用于解决时区时间差报错问题
+      jdbc-url: jdbc:mysql://localhost:3306/mrr?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+      #账号，这里填入自己数据库的账号和密码
+      username: root
+      #密码
+      password: root
+      #驱动类
+      driver-class-name: com.mysql.cj.jdbc.Driver
+    slave1:
+      #MySQL连接信息，后面一连串的是用于解决时区时间差报错问题
+      jdbc-url: jdbc:mysql://192.168.121.57:3306/mrr?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+      #账号，这里填入自己数据库的账号和密码
+      username: root
+      #密码
+      password: root
+      #驱动类
+      driver-class-name: com.mysql.cj.jdbc.Driver    	   
+  mail:
+    # 配置 SMTP 服务器地址
+    host: smtp.qq.com
+    # 发送者邮箱
+    username: 303843275@qq.com
+    # 配置密码，注意不是真正的密码，而是刚刚申请到的授权码
+    password: ckpvqrhwsvbxbiab
+    # 端口号465或587
+    port: 587
+    # 默认的邮件编码为UTF-8
+    default-encoding: UTF-8
+    # 配置SSL 加密工厂
+    properties:
+      mail:
+        smtp:
+          socketFactoryClass: javax.net.ssl.SSLSocketFactory
+        #表示开启 DEBUG 模式，这样，邮件发送过程的日志会在控制台打印出来，方便排查错误
+        debug: true    
+
+#MyBatis的相关配置
+mybatis:
+  #Mapper映射XML文件，建议写在resources目录下
+  mapper-locations: classpath:mappers/*.xml
+  #Mapper接口存放的目录
+  type-aliases-package: com.mmcz.Mapper
+  #开启驼峰命名
+  configuration:
+    map-underscore-to-camel-case: true
+
+

@@ -1,0 +1,1 @@
+path = \\MCZSVR06\scan\ZP188006

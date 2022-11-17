@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mmcz.Mapper.DeptMapper">
+    <resultMap id="DeptResult" type="com.mmcz.entity.Dept">
+        <id column="deptid" property="deptid"></id>
+        <result column="deptname" property="deptname"></result>
+    </resultMap>
+    <select id="findAll" resultMap="DeptResult">
+        SELECT * FROM dept
+    </select>
+    
+    <select id="findById" resultMap="DeptResult" parameterType="java.lang.Integer" >
+        SELECT * FROM dept where deptid=#{deptid}
+    </select>    
+</mapper>
