@@ -14,21 +14,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
-
-import javax.activation.DataHandler;
-import javax.activation.FileDataSource;
-import javax.mail.Authenticator;
-import javax.mail.BodyPart;
-import javax.mail.Message;
-import javax.mail.Multipart;
-import javax.mail.PasswordAuthentication;
-import javax.mail.Session;
-import javax.mail.Transport;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMessage;
-import javax.mail.internet.MimeMultipart;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.poi.ss.usermodel.BorderStyle;
@@ -51,6 +36,7 @@ import com.jacob.com.ComThread;
 import com.jacob.com.Dispatch;
 import com.jacob.com.Variant;
 import com.opslab.helper.HikariAS400;
+import com.opslab.helper.SendMail;
 import com.opslab.util.FileUtil;
 
 /*
@@ -279,7 +265,7 @@ public class BillsDomestic implements Runnable {
 			rs = pstmt.executeQuery();
 			String sname = "";
 			int tax = 0;
-			float sum = 0;
+			double sum = 0;
 			JSONArray listData = new JSONArray();
 			while (rs.next()) {
 				JSONObject objData = new JSONObject();
@@ -295,7 +281,7 @@ public class BillsDomestic implements Runnable {
 				objData.put("ASKDAY", rs.getString("ASKDAY"));// 检收日期
 				listData.add(objData);
 
-				sum += rs.getFloat("ASKGAK");
+				sum += rs.getDouble("ASKGAK");
 				tax = rs.getInt("MVBILL");
 			}
 
@@ -402,8 +388,8 @@ public class BillsDomestic implements Runnable {
 				sheetAt.getRow(rowNum).getCell(3).setCellValue(itemObj.getString("MICNM1"));
 				sheetAt.getRow(rowNum).getCell(4).setCellValue(itemObj.getString("ASTANI"));
 				sheetAt.getRow(rowNum).getCell(5).setCellValue(itemObj.getInteger("ASGKAK"));
-				sheetAt.getRow(rowNum).getCell(6).setCellValue(itemObj.getFloat("ASTANK"));
-				sheetAt.getRow(rowNum).getCell(7).setCellValue(itemObj.getFloat("ASKGAK"));
+				sheetAt.getRow(rowNum).getCell(6).setCellValue(itemObj.getDoubleValue("ASTANK"));
+				sheetAt.getRow(rowNum).getCell(7).setCellValue(itemObj.getDoubleValue("ASKGAK"));
 				sheetAt.getRow(rowNum).getCell(8).setCellValue(itemObj.getString("ZKPLNT"));
 				sheetAt.getRow(rowNum).getCell(9).setCellValue(itemObj.getString("ASKDAY"));
 			}
@@ -628,8 +614,10 @@ public class BillsDomestic implements Runnable {
 					log.info("存在文件:" + baseName);
 					jacobXls2PDF(srcFile, destFile);
 					if (item.getString("ETPATN").length() > 0) {
-						log.info("发送邮件:" + item.getString("ETPATN") + "," + item.getString("ETPOTO"));
-						sendMmczMail(item.getString("ETPATN"), item.getString("ETPOTO"), destFile);//
+						log.info("发送邮件:" + item.getString("ASTORI") + "," + item.getString("ETPATN") + ","
+								+ item.getString("ETPOTO"));
+						sendMmczMail(item.getString("ASTORI"), item.getString("ETPATN"), item.getString("ETPOTO"),
+								destFile);//
 					}
 					websckt.sendMessage(String.format("SYN|%02d|生成文件[%s](%d/%d)", ((i + 1) * 100 / nTotalPdf),
 							baseName + ".pdf", (i + 1), nTotalPdf));
@@ -646,112 +634,22 @@ public class BillsDomestic implements Runnable {
 		log.info("spare.1111111111=" + (System.currentTimeMillis() - begin));
 	}
 
-	// 邮件参数
-	private static class MailInfo {
-		String host;
-		boolean auth;
-		String username;
-		String password;
-		String from;
-		String to;
-		String cc;
-		String title;
-		String content;
-		String filename;
-	}
-
-	public static void sendMail(MailInfo info) {
-		Properties props = new Properties();
-		// String host = "MCZ.MMCZ.MEKJPN.NGNET";
-		props.put("mail.smtp.host", info.host);// 指定SMTP服务器
-		// props.put("mail.smtp.port", String.valueOf(info.port));
-		props.put("mail.smtp.auth", String.valueOf(info.auth));// 指定是否需要SMTP验证,为false时，不用指定用户名、密码
-		log.info("dddddddd " + String.valueOf(info.auth));
-
-		try {
-			Session mailSession = Session.getInstance(props, new Authenticator() {
-				@Override
-				public PasswordAuthentication getPasswordAuthentication() {
-					// 发件人邮箱 用户名和授权码
-					return new PasswordAuthentication(info.username, info.password);
-				}
-			});
-
-			mailSession.setDebug(true);// 是否在控制台显示debug信息
-
-			MimeMessage message = new MimeMessage(mailSession);
-			message.setFrom(new InternetAddress(info.from));// 发件人
-
-			// 支持多个收件人
-			if (info.to.indexOf(",") != -1) {
-				String to2[] = info.to.split(",");
-				InternetAddress[] adr = new InternetAddress[to2.length];
-				for (int i = 0; i < adr.length; i++) {
-					adr[i] = new InternetAddress(to2[i]);
-				}
-				message.setRecipients(Message.RecipientType.TO, adr);
-			} else {
-				message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(info.to, false));
-			}
-			if (info.cc != null) {
-				if (info.cc.indexOf(",") != -1) {
-					// 多个
-					String cc2[] = info.cc.split(",");
-					InternetAddress[] adr = new InternetAddress[cc2.length];
-					for (int i = 0; i < cc2.length; i++) {
-						adr[i] = new InternetAddress(cc2[i]);
-					}
-					// Message的setRecipients方法支持群发。。注意:setRecipients方法是复数和点 到点不一样
-					message.setRecipients(Message.RecipientType.CC, adr);
-				} else {
-					message.setRecipients(Message.RecipientType.CC, InternetAddress.parse(info.cc, false));
-				}
-			}
-
-			// 将中文转化为GB2312编码
-			message.setSubject(info.title, "GB2312"); // 邮件主题
-			// message.setContent(info.content, "text/html;charset=gb2312");// 邮件内容
-			message.setHeader("Disposition-Notification-To", info.from);
-
-			BodyPart textPart = new MimeBodyPart();
-			textPart.setContent(info.content, "text/html;charset=gb2312");
-
-			BodyPart attachPart = new MimeBodyPart();
-			FileDataSource fileds = new FileDataSource(info.filename);
-			attachPart.setDataHandler(new DataHandler(fileds));
-			attachPart.setFileName(fileds.getName());
-			Multipart mp = new MimeMultipart();
-			mp.addBodyPart(textPart);
-			mp.addBodyPart(attachPart);
-
-			message.setContent(mp);
-			message.saveChanges();
-			Transport transport = mailSession.getTransport("smtp");
-			if (info.auth)
-				transport.connect(info.host, info.username, info.password);
-			else
-				transport.connect(info.host, null, null);
-			transport.sendMessage(message, message.getAllRecipients());
-			// Transport.send(message);
-			transport.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	public void sendMmczMail(String to, String cc, String filename) {
-		MailInfo info = new MailInfo();
-		info.host = "mmczsmtp.mmcz.mekjpn.ngnet";
-		info.auth = false;
-		info.username = "";
-		info.password = "";
-		info.from = this.sEMailAddr;// "xiaojunxie@mektec.com.cn";
-		info.to = to;// "xiaojunxie@mektec.com.cn,aibianmu@163.com";
-		info.cc = cc;// "911xie@163.com,911xie@126.com";
-		info.title = "紫翔对账邮件";
-		info.content = "附件是对账文件";
-		info.filename = filename;// "D:\\eclipse-workspace\\mrrbe\\tmp\\0001-20220805-20220815.pdf";
-		sendMail(info);
+	public void sendMmczMail(String supplierCode, String to, String cc, String filename) {
+		SendMail mail = new SendMail();
+		mail.setHost("mmczsmtp.mmcz.mekjpn.ngnet");
+		mail.setAuth(false);
+		mail.setUsername("");
+		mail.setPassword("");
+		mail.setFrom(this.sEMailAddr);
+		mail.setTo(to);
+		String cctarget = cc.trim().length() == 0 ? this.sEMailAddr : cc + "," + this.sEMailAddr;
+		mail.setCc(cctarget);
+		log.info("sendMmczMail...cc=" + cctarget);
+		mail.setTitle("珠海紫翔对账单" + supplierCode);
+		mail.setContent("请查收附件珠海紫翔的对账单，若确认没有问题请及时提供发票,谢谢！");
+		mail.setAttachFile(filename);
+		// mail.setImageFile("d:\\mpechart.png");
+		mail.sendMail();
 	}
 
 	@Override

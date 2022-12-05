@@ -17,21 +17,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
-
-import javax.activation.DataHandler;
-import javax.activation.FileDataSource;
-import javax.mail.Authenticator;
-import javax.mail.BodyPart;
-import javax.mail.Message;
-import javax.mail.Multipart;
-import javax.mail.PasswordAuthentication;
-import javax.mail.Session;
-import javax.mail.Transport;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMessage;
-import javax.mail.internet.MimeMultipart;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.poi.ss.usermodel.BorderStyle;
@@ -53,6 +38,7 @@ import com.jacob.com.ComThread;
 import com.jacob.com.Dispatch;
 import com.jacob.com.Variant;
 import com.opslab.helper.HikariAS400;
+import com.opslab.helper.SendMail;
 import com.opslab.util.FileUtil;
 
 /*
@@ -184,7 +170,7 @@ public class BillsAbroad implements Runnable {
 					+ " AND ZKWFG7<>'Y' " + sCode + sType + sFactory + " GROUP BY ASTORI";
 
 			// 执行sql
-			String sql = "SELECT ASTORI, AA.SUMASGKIN, "
+			String sql = "SELECT DISTINCT ASTORI, AA.SUMASGKIN, "
 					+ "case C.ETPATN when NULLIF(C.ETPATN,NULL) THEN C.ETPATN else '' end ETPATN,"
 					+ "case C.ETPOTO when NULLIF(C.ETPOTO,NULL) THEN C.ETPOTO else '' end ETPOTO " + "FROM (" + subSql
 					+ ") AA " + "LEFT JOIN YBMETOLA C ON AA.ASTORI=C.ETTORI AND C.ETSSKN='AP' "
@@ -288,7 +274,7 @@ public class BillsAbroad implements Runnable {
 			int MCDAYS = jsonobj.getInteger("MCDAYS");
 			SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd");
 			SimpleDateFormat sdf = new SimpleDateFormat("yyyy年MM月");
-			Date date = simpleDateFormat.parse(sBegin.substring(0, 6) + "01");
+			Date date = simpleDateFormat.parse(sBegin.substring(0, 6) + "05");
 			Calendar calendar = Calendar.getInstance();
 			calendar.setTime(date);
 			calendar.add(Calendar.DATE, MCDAYS);
@@ -303,8 +289,8 @@ public class BillsAbroad implements Runnable {
 			log.info("sql.2=" + sql);
 			pstmt = conn.prepareStatement(sql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
 			rs = pstmt.executeQuery();
-			float Sum1 = 0;
-			float Sum2 = 0;
+			double Sum1 = 0;
+			double Sum2 = 0;
 			while (rs.next()) {
 				String str = rs.getString("ASKDAY");// "20220802";
 				str = str.substring(0, 4) + "/" + str.substring(4, 6) + "/" + str.substring(6, 8);
@@ -315,6 +301,7 @@ public class BillsAbroad implements Runnable {
 				switch (rs.getInt("ZKPLNT")) {
 				case 1:
 				case 3:
+					// log.info("-----------------01.ASGKIN=" + rs.getFloat("ASGKIN"));
 					Sum1 = Sum1 + rs.getFloat("ASGKIN");
 					break;
 				case 2:
@@ -324,7 +311,7 @@ public class BillsAbroad implements Runnable {
 			}
 			jsonobj.put("Sum1", Sum1);
 			jsonobj.put("Sum2", Sum2);
-			log.info("Sum1=" + Sum1 + ", Sum2=" + Sum2);
+			log.info("===============Sum1=" + Sum1 + ", Sum2=" + Sum2);
 
 			sql = "SELECT ASORGC,ASTORI, ASKDAY, ASINNO, SUM(ASKGAK) COST, "
 					+ "SUM(ASGKIN) INVOICECOST, ASCURR, ASFREC FROM MTKKTAP A "
@@ -519,8 +506,8 @@ public class BillsAbroad implements Runnable {
 		styleCenter.setAlignment(HorizontalAlignment.CENTER);
 
 		try {
-			float totalCost = 0;
-			float totalInCost = 0;
+			double totalCost = 0;
+			double totalInCost = 0;
 			for (int n = 0; n < nPage; n++) {
 				// 每页页头
 				appendBlankRow(sheetAt, headHeight);
@@ -528,7 +515,6 @@ public class BillsAbroad implements Runnable {
 
 				// 每页内容
 				detailHeight = (n + 1) * nPerPage > listData.size() ? listData.size() - n * nPerPage : detailHeight;
-				log.info("appendRow...detail..." + detailHeight);
 				appendRow(sheetAt, detailHeight);
 
 				for (int i = 0; i < nPerPage; i++) {
@@ -552,8 +538,8 @@ public class BillsAbroad implements Runnable {
 						sheetAt.getRow(row).getCell(8).setCellStyle(style);
 						sheetAt.getRow(row).getCell(6).setCellValue(itemObj.getFloat("COST"));
 						sheetAt.getRow(row).getCell(8).setCellValue(itemObj.getFloat("INVOICECOST"));
-						totalCost += itemObj.getFloat("COST");
-						totalInCost += itemObj.getFloat("INVOICECOST");
+						totalCost += itemObj.getDoubleValue("COST");
+						totalInCost += itemObj.getDoubleValue("INVOICECOST");
 
 						sheetAt.getRow(row).getCell(10).setCellValue(itemObj.getString("ASCURR"));
 						sheetAt.getRow(row).getCell(11).setCellValue(itemObj.getString("ASFREC"));
@@ -625,8 +611,8 @@ public class BillsAbroad implements Runnable {
 		sheetAt.getRow(20).getCell(10).setCellValue("(" + jsonobj.getString("LastUnit") + ")");// Slave.ASCURR
 
 		// 数值的不能用字串，否则xls里如果有公式的就不会自动计算了
-		sheetAt.getRow(21).getCell(10).setCellValue(jsonobj.getFloat("Sum1"));// Sum1:ZKPLNT==1or3->ASGKIN
-		sheetAt.getRow(22).getCell(10).setCellValue(jsonobj.getFloat("Sum2"));// Sum2:ZKPLNT==2->ASGKIN
+		sheetAt.getRow(21).getCell(10).setCellValue(jsonobj.getDoubleValue("Sum1"));// Sum1:ZKPLNT==1or3->ASGKIN
+		sheetAt.getRow(22).getCell(10).setCellValue(jsonobj.getDoubleValue("Sum2"));// Sum2:ZKPLNT==2->ASGKIN
 		sheetAt.getRow(35).getCell(10).setCellValue(jsonobj.getString("PAYDATE"));
 
 		// 单据二
@@ -639,8 +625,8 @@ public class BillsAbroad implements Runnable {
 		sheetAt.getRow(49).getCell(2).setCellValue(jsonobj.getString("MVTERM"));// Master.MVTERM
 		sheetAt.getRow(52).getCell(8).setCellValue("(" + jsonobj.getString("LastUnit") + ")");// Slave.ASCURR
 		sheetAt.getRow(52).getCell(10).setCellValue("(" + jsonobj.getString("LastUnit") + ")");// Slave.ASCURR
-		sheetAt.getRow(53).getCell(10).setCellValue(jsonobj.getFloat("Sum1"));// Sum1:ZKPLNT==1or3->ASGKIN
-		sheetAt.getRow(54).getCell(10).setCellValue(jsonobj.getFloat("Sum2"));// Sum2:ZKPLNT==2->ASGKIN
+		sheetAt.getRow(53).getCell(10).setCellValue(jsonobj.getDoubleValue("Sum1"));// Sum1:ZKPLNT==1or3->ASGKIN
+		sheetAt.getRow(54).getCell(10).setCellValue(jsonobj.getDoubleValue("Sum2"));// Sum2:ZKPLNT==2->ASGKIN
 		sheetAt.getRow(62).getCell(1).setCellValue(jsonobj.getString("MVTMEK"));// Master.MVTMEK
 
 		sheetAt.setForceFormulaRecalculation(true);
@@ -842,8 +828,10 @@ public class BillsAbroad implements Runnable {
 					log.info("存在文件:" + baseName);
 					jacobXls2PDF(srcFile, destFile);
 					if (item.getString("ETPATN").length() > 0) {
-						log.info("发送邮件:" + item.getString("ETPATN") + "," + item.getString("ETPOTO"));
-						sendMmczMail(item.getString("ETPATN"), item.getString("ETPOTO"), destFile);//
+						log.info("发送邮件:" + item.getString("ASTORI") + "," + item.getString("ETPATN") + ","
+								+ item.getString("ETPOTO"));
+						sendMmczMail(item.getString("ASTORI"), item.getString("ETPATN"), item.getString("ETPOTO"),
+								destFile);//
 					}
 					websckt.sendMessage(String.format("SYN|%02d|生成文件[%s](%d/%d)", ((i + 1) * 100 / nTotalPdf),
 							baseName + ".pdf", (i + 1), nTotalPdf));
@@ -860,139 +848,22 @@ public class BillsAbroad implements Runnable {
 		log.info("spare.1111111111=" + (System.currentTimeMillis() - begin));
 	}
 
-	// 邮件参数
-	private static class MailInfo {
-		String host;
-		boolean auth;
-		String username;
-		String password;
-		String from;
-		String to;
-		String cc;
-		String title;
-		String content;
-		String filename;
-	}
-
-	public static void sendMail(MailInfo info) {
-		Properties props = new Properties();
-		// String host = "MCZ.MMCZ.MEKJPN.NGNET";
-		props.put("mail.smtp.host", info.host);// 指定SMTP服务器
-		// props.put("mail.smtp.port", String.valueOf(info.port));
-		props.put("mail.smtp.auth", String.valueOf(info.auth));// 指定是否需要SMTP验证,为false时，不用指定用户名、密码
-		log.info("dddddddd " + String.valueOf(info.auth));
-
-		try {
-			// Session mailSession = Session.getDefaultInstance(props);
-
-			// 这一步是qq邮箱才有, 其他邮箱不用
-//			if (info.host.indexOf("smtp.qq.com") >= 0) {
-//				MailSSLSocketFactory sf = new MailSSLSocketFactory();
-//				sf.setTrustAllHosts(true);
-//				props.put("mail.smtp.ssl.enable", "true");
-//				props.put("mail.smtp.ssl.socketFactory", sf);
-//				log.info("eeeeee " + info.host);
-//			}
-
-			Session mailSession = Session.getInstance(props, new Authenticator() {
-				@Override
-				public PasswordAuthentication getPasswordAuthentication() {
-					// 发件人邮箱 用户名和授权码
-					return new PasswordAuthentication(info.username, info.password);
-				}
-			});
-
-			mailSession.setDebug(true);// 是否在控制台显示debug信息
-
-			MimeMessage message = new MimeMessage(mailSession);
-			message.setFrom(new InternetAddress(info.from));// 发件人
-
-//			message.addRecipient(Message.RecipientType.TO, new InternetAddress(info.to));// 收件人
-//			message.setRecipient(Message.RecipientType.CC, new InternetAddress(info.cc));// 收件人
-
-			// 支持多个收件人
-			if (info.to.indexOf(",") != -1) {
-				String to2[] = info.to.split(",");
-				InternetAddress[] adr = new InternetAddress[to2.length];
-				for (int i = 0; i < adr.length; i++) {
-					adr[i] = new InternetAddress(to2[i]);
-				}
-				message.setRecipients(Message.RecipientType.TO, adr);
-			} else {
-				message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(info.to, false));
-			}
-			if (info.cc != null) {
-				if (info.cc.indexOf(",") != -1) {
-					// 多个
-					String cc2[] = info.cc.split(",");
-					InternetAddress[] adr = new InternetAddress[cc2.length];
-					for (int i = 0; i < cc2.length; i++) {
-						adr[i] = new InternetAddress(cc2[i]);
-					}
-					// Message的setRecipients方法支持群发。。注意:setRecipients方法是复数和点 到点不一样
-					message.setRecipients(Message.RecipientType.CC, adr);
-				} else {
-					message.setRecipients(Message.RecipientType.CC, InternetAddress.parse(info.cc, false));
-				}
-			}
-
-			// 将中文转化为GB2312编码
-			message.setSubject(info.title, "GB2312"); // 邮件主题
-			// message.setContent(info.content, "text/html;charset=gb2312");// 邮件内容
-			message.setHeader("Disposition-Notification-To", info.from);
-
-			BodyPart textPart = new MimeBodyPart();
-			textPart.setContent(info.content, "text/html;charset=gb2312");
-
-			BodyPart attachPart = new MimeBodyPart();
-			FileDataSource fileds = new FileDataSource(info.filename);
-			attachPart.setDataHandler(new DataHandler(fileds));
-			attachPart.setFileName(fileds.getName());
-			Multipart mp = new MimeMultipart();
-			mp.addBodyPart(textPart);
-			mp.addBodyPart(attachPart);
-
-			message.setContent(mp);
-			message.saveChanges();
-			Transport transport = mailSession.getTransport("smtp");
-			if (info.auth)
-				transport.connect(info.host, info.username, info.password);
-			else
-				transport.connect(info.host, null, null);
-			transport.sendMessage(message, message.getAllRecipients());
-			// Transport.send(message);
-			transport.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	public void sendMmczMail(String to, String cc, String filename) {
-		MailInfo info = new MailInfo();
-		info.host = "mmczsmtp.mmcz.mekjpn.ngnet";
-		info.auth = false;
-		info.username = "";
-		info.password = "";
-		info.from = this.sEMailAddr;// "xiaojunxie@mektec.com.cn";
-		info.to = to;// "xiaojunxie@mektec.com.cn,aibianmu@163.com";
-		info.cc = cc;// "911xie@163.com,911xie@126.com";
-		info.title = "紫翔对账邮件";
-//		info.content = "<table width=\"703\" style=\"border-collapse:collapse;\">\r\n" + "	<tr height=\"8\">\r\n"
-//				+ "		<td width=\"90\" bgcolor=\"#6fa1d2\" style=\"border-style:none none solid none;border-color:#5C87B2;border-width:0px 0px 1px 0px;padding:1px 1px;\">\r\n"
-//				+ "			<div align=\"center\"><span style=\" font-size:12pt;color:white\">Date</span></div>\r\n"
-//				+ "		</td>\r\n"
-//				+ "		<td width=\"105\" bgcolor=\"#6fa1d2\" style=\"border-style:none none solid none;border-color:#5C87B2;border-width:0px 0px 1px 0px;padding:1px 1px;\">\r\n"
-//				+ "			<div align=\"center\"><span style=\" font-size:12pt;color:white\">Assy MPE Rate</span></div>\r\n"
-//				+ "		</td>\r\n" + "	</tr>\r\n" + "		<tr height=\"8\">\r\n"
-//				+ "			<td width=\"89\" style=\"border-style:solid solid solid solid;border-color:#5C87B2;border-width:1px 1px 1px 1px;padding:1px 1px;\">\r\n"
-//				+ "				<div align=\"center\"><span style=\" font-size:12pt;color:#4f4f4f\">10-10-10-16</span></div>\r\n"
-//				+ "			</td>\r\n"
-//				+ "			<td width=\"104\" style=\"border-style:solid solid solid solid;border-color:#5C87B2;border-width:1px 1px 1px 1px;padding:1px 1px;\">\r\n"
-//				+ "				<div align=\"center\"><span style=\" font-size:12pt;color:#4f4f4f\">0%</span></div>\r\n"
-//				+ "			</td>\r\n" + "	</tr>\r\n" + "</table>";// "附件是对账文件";
-		info.content = "附件是对账文件";
-		info.filename = filename;// "D:\\eclipse-workspace\\mrrbe\\tmp\\0001-20220805-20220815.pdf";
-		sendMail(info);
+	public void sendMmczMail(String supplierCode, String to, String cc, String filename) {
+		SendMail mail = new SendMail();
+		mail.setHost("mmczsmtp.mmcz.mekjpn.ngnet");
+		mail.setAuth(false);
+		mail.setUsername("");
+		mail.setPassword("");
+		mail.setFrom(this.sEMailAddr);
+		mail.setTo(to);
+		String cctarget = cc.trim().length() == 0 ? this.sEMailAddr : cc + "," + this.sEMailAddr;
+		mail.setCc(cctarget);
+		log.info("sendMmczMail...cc=" + cctarget);
+		mail.setTitle("The Statement of Mektec Manufacturing Corp(Zhuhai)LTD " + supplierCode);
+		mail.setContent("Statement as attached, please confirm and sign your company seal back. Best regards，");
+		mail.setAttachFile(filename);
+		// mail.setImageFile("d:\\mpechart.png");
+		mail.sendMail();
 	}
 
 	@Override
@@ -1011,6 +882,7 @@ public class BillsAbroad implements Runnable {
 				long begin = System.currentTimeMillis();
 				jacobInit();
 				for (int i = 0; i < listTori.size(); i++) {
+					log.info("genToriDataaaaaaaaaaaaaaaaa=" + listTori.get(i) + "," + i);
 					JSONObject jsonObj = genToriData(listTori.get(i), this.getsBegin(), this.getsEnd());
 					log.info("jsonObj=" + jsonObj.toJSONString());
 					if (jsonObj.getInteger("code") != 0) {
@@ -1038,8 +910,8 @@ public class BillsAbroad implements Runnable {
 	public static void main(String[] args) throws Exception {
 		BillsAbroad bills = new BillsAbroad();
 		// bills.genToriData("0523", "20220801", "20220815");
-		bills.setsEMailAddr("MPE_Report@mektec.com.cn");
-		bills.sendMmczMail("xiaojunxie@mektec.com.cn", "911xie@163.com",
+		bills.setsEMailAddr("mmcz_monthlystatement@mektec.com.cn");
+		bills.sendMmczMail("0001", "xiaojunxie@mektec.com.cn", "mengmenggong@mektec.com.cn",
 				"D:\\eclipse-workspace\\mrrbe\\Reconcile.xltx");
 
 	}
