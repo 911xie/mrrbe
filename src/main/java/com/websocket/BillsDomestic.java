@@ -182,7 +182,7 @@ public class BillsDomestic implements Runnable {
 					+ " AND ZKWFG7<>'Y' " + sCode + sType + sFactory + " GROUP BY ASTORI";
 
 			// 执行sql
-			String sql = "SELECT ASTORI, AA.SUMASGKIN, "
+			String sql = "SELECT DISTINCT ASTORI, AA.SUMASGKIN, "
 					+ "case C.ETPATN when NULLIF(C.ETPATN,NULL) THEN C.ETPATN else '' end ETPATN,"
 					+ "case C.ETPOTO when NULLIF(C.ETPOTO,NULL) THEN C.ETPOTO else '' end ETPOTO " + "FROM (" + subSql
 					+ ") AA " + "LEFT JOIN YBMETOLA C ON AA.ASTORI=C.ETTORI AND C.ETSSKN='AP' AND ETATNO=1 "
