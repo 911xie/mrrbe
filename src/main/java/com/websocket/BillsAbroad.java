@@ -173,7 +173,7 @@ public class BillsAbroad implements Runnable {
 			String sql = "SELECT DISTINCT ASTORI, AA.SUMASGKIN, "
 					+ "case C.ETPATN when NULLIF(C.ETPATN,NULL) THEN C.ETPATN else '' end ETPATN,"
 					+ "case C.ETPOTO when NULLIF(C.ETPOTO,NULL) THEN C.ETPOTO else '' end ETPOTO " + "FROM (" + subSql
-					+ ") AA " + "LEFT JOIN YBMETOLA C ON AA.ASTORI=C.ETTORI AND C.ETSSKN='AP' "
+					+ ") AA " + "LEFT JOIN YBMETOLA C ON AA.ASTORI=C.ETTORI AND C.ETSSKN='AP' AND ETATNO=1 "
 					+ "LEFT JOIN YBMTORP D ON AA.ASTORI=D.MVTORI LEFT JOIN UZSKTTP E ON AA.ASTORI=E.TTTORI "
 					+ "WHERE AA.SUMASGKIN>0 AND MVADCD='A' " + director + " ORDER BY ASTORI";
 			log.info(sql);
@@ -302,10 +302,10 @@ public class BillsAbroad implements Runnable {
 				case 1:
 				case 3:
 					// log.info("-----------------01.ASGKIN=" + rs.getFloat("ASGKIN"));
-					Sum1 = Sum1 + rs.getFloat("ASGKIN");
+					Sum1 = Sum1 + rs.getDouble("ASGKIN");
 					break;
 				case 2:
-					Sum2 = Sum2 + rs.getFloat("ASGKIN");
+					Sum2 = Sum2 + rs.getDouble("ASGKIN");
 					break;
 				}
 			}
@@ -536,8 +536,8 @@ public class BillsAbroad implements Runnable {
 
 						sheetAt.getRow(row).getCell(6).setCellStyle(style);
 						sheetAt.getRow(row).getCell(8).setCellStyle(style);
-						sheetAt.getRow(row).getCell(6).setCellValue(itemObj.getFloat("COST"));
-						sheetAt.getRow(row).getCell(8).setCellValue(itemObj.getFloat("INVOICECOST"));
+						sheetAt.getRow(row).getCell(6).setCellValue(itemObj.getDoubleValue("COST"));
+						sheetAt.getRow(row).getCell(8).setCellValue(itemObj.getDoubleValue("INVOICECOST"));
 						totalCost += itemObj.getDoubleValue("COST");
 						totalInCost += itemObj.getDoubleValue("INVOICECOST");
 
