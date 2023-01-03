@@ -1,22 +1,40 @@
 package com.mmcz.Controller;
 
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
+import org.springframework.boot.system.ApplicationHome;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.alibaba.fastjson.JSONObject;
+import com.common.Constants;
+import com.common.response.ErrorCode;
+import com.common.response.ResultBody;
+import com.common.response.ResultBodyUtil;
+import com.opslab.helper.FileHelper;
 import com.opslab.helper.HikariAS400;
 import com.opslab.helper.HikariMsSql;
 import com.opslab.helper.HikariMySql;
+import com.opslab.helper.ZipFileUtil;
+import com.opslab.util.FileUtil;
 
 import net.sf.json.JSONArray;
 
@@ -168,6 +186,130 @@ public class commonController {
 			e.printStackTrace();
 		}
 		return jsonobj;
+	}
+
+	/**
+	 * 文件上传具体实现方法;
+	 * 
+	 * @param file
+	 * @return
+	 */
+	@RequestMapping("/uploadZip")
+	@ResponseBody
+	public ResultBody fileUpload(
+			/* @RequestPart("single") MultipartFile mf, */@RequestPart("multi") MultipartFile[] mfs,
+			@RequestPart("data") String dataPath) {
+		// System.out.println("单文件上传信息为:" + mf.getOriginalFilename());
+		ResultBody result = ResultBodyUtil.success();
+		System.out.println("data:" + dataPath);
+		File setPath = new File(dataPath);
+		String zipPath = "";
+
+		if (dataPath.trim().length() > 0 && dataPath.equalsIgnoreCase("default")) {
+			zipPath = "\\\\MCZSVR06\\scan\\设计管理课文件归档";
+		} else if (dataPath.trim().length() > 0) {
+			if (!setPath.exists()) {
+				return ResultBodyUtil.fail(ErrorCode.FILE_PATH_NOT_EXIST, "文件路径不存在");
+			} else {
+				zipPath = dataPath;
+			}
+		}
+
+		System.out.println("多文件个数:" + mfs.length + ",output=" + zipPath);
+		ApplicationHome h = new ApplicationHome(getClass());
+		File jarPath = h.getSource();
+		String BasePath = "";
+		List<String> listDir = new ArrayList<String>();
+
+		// 1.上传文件
+		// 文件夹里文件
+		for (MultipartFile m : mfs) {
+			// System.out.println("多文件信息:文件名称:" + m.getOriginalFilename() + ",文件大小:" +
+			// m.getSize() / 1000 + "kb");
+			String fileName = jarPath.getParentFile().toString() + "\\" + m.getOriginalFilename();
+			String destFileName = "";
+			File f = new File(fileName);
+			// 主目录
+			if (!f.getParentFile().exists())
+				f.getParentFile().mkdirs();
+			BasePath = f.getParent();
+
+			String filePreName = FileHelper.getFileName(fileName, Constants.FILE_PRENAME);
+			// System.out.println("Basepath..." + BasePath);
+			if (FileHelper.getFileName(fileName, Constants.FILE_EXTNAME).equalsIgnoreCase("csv")) {
+				destFileName = fileName;
+			} else if (filePreName.length() >= 12) {
+				// 检测子文件夹是否存在，不存在则创建
+				String orgFileName = FileHelper.getFileName(fileName, Constants.FILE_PURENAME);
+				filePreName = filePreName.replaceAll("_", "-");
+				String subpath = f.getParentFile() + "\\" + filePreName.substring(0, 12);
+				File f1 = new File(subpath);
+				if (!f1.exists()) {
+					f1.mkdirs();
+					listDir.add(subpath);
+				}
+				destFileName = subpath + "\\" + orgFileName;
+			}
+
+			try {
+				BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(destFileName));
+				// System.out.println(m.getName());
+				out.write(m.getBytes());
+				out.flush();
+				out.close();
+
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+				return ResultBodyUtil.fail(null);
+			} catch (IOException e) {
+				e.printStackTrace();
+				return ResultBodyUtil.fail(null);
+			}
+		}
+		// 2.拷贝公共文件到各文件夹
+		File fBase = new File(BasePath);
+		File[] fs = fBase.listFiles();
+		for (File f : fs) {
+			if (f.isFile()) {
+				for (int i = 0; i < listDir.size(); i++) {
+					System.out.println("listdir..." + listDir.get(i));
+					FileUtil.copy(BasePath + "\\" + f.getName(), listDir.get(i) + "\\" + f.getName());
+				}
+				break;
+			}
+		}
+		// 3.压缩
+		for (File f : fs) {
+			if (f.isDirectory()) {
+				System.out.println("========== " + f.getAbsolutePath() + "," + f.getName());
+				ZipFileUtil.compressToZip(f.getAbsolutePath(), zipPath, f.getName() + ".zip");
+			}
+		}
+
+		return result;
+
+//		// 单个文件 
+//		if (!mf.isEmpty()) { 
+//			try { 
+//				BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream("D:\\666.txt"));
+//				System.out.println(mf.getName()); 
+//				out.write(mf.getBytes()); 
+//				out.flush();
+//				out.close(); 
+//			} catch (FileNotFoundException e) { 
+//				e.printStackTrace(); 
+//				return "上传失败," + e.getMessage(); 
+//			} catch (IOException e) { 
+//				e.printStackTrace();
+//				return "上传失败," + e.getMessage(); 
+//			}
+//
+//			return "上传成功";
+//		} 
+//		else { 
+//			return "上传失败，因为文件是空的."; 
+//		}
+
 	}
 
 }

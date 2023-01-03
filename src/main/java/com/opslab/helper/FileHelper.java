@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.common.Constants;
 import com.opslab.functions.ObjectFilter;
 import com.opslab.functions.ObjectHandler;
 import com.opslab.functions.ObjectProcess;
@@ -829,4 +830,40 @@ public final class FileHelper {
 		}
 		return false;
 	}
+
+	/**
+	 * 获取文件前缀名
+	 *
+	 * @param filename
+	 * @param contents
+	 * @return
+	 */
+	public static String getFileName(String fileFullName, int flag) {
+		File file = new File(fileFullName);
+		String fileName = "";
+		String filePath = "";
+		int nbegin1 = fileFullName.lastIndexOf("\\");
+		int nbegin2 = fileFullName.lastIndexOf("/");
+		int nbegin = nbegin1 > nbegin2 ? nbegin1 : nbegin2;
+		if (nbegin >= 0) {
+			fileName = fileFullName.substring(nbegin + 1, fileFullName.length());
+			filePath = fileFullName.substring(0, nbegin);
+		}
+
+		nbegin = fileName.lastIndexOf(".");
+		String retName = "";
+		String preName = fileName.substring(0, nbegin);
+		String extName = fileName.substring(nbegin + 1);
+		if (flag == Constants.FILE_PRENAME)
+			retName = preName;
+		if (flag == Constants.FILE_EXTNAME)
+			retName = extName;
+		if (flag == Constants.FILE_PURENAME)
+			retName = fileName;
+		if (flag == Constants.FILE_PATH)
+			retName = filePath;
+
+		return retName;
+	}
+
 }

@@ -18,7 +18,8 @@ public enum ErrorCode {
     ILLEGAL_PARAMETER(1000, "Illegal parameter"),
     PARAM_NOT_EXIST(1001, "%s does not exist"),
     TOKEN_FAIL(1002, "Token Error"),
-    LOGIN_VALIDATE_FAIL(1003, "Validate Fail")
+    LOGIN_VALIDATE_FAIL(1003, "Validate Fail"),
+    FILE_PATH_NOT_EXIST(1004, "File path not exist or No permission!")
     ;
 	
     public Integer code;
