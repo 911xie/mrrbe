@@ -17,6 +17,20 @@ public class DeptService {
 		return deptMapper.findAll();
 	}
 
+	public int update(Dept dept) {
+		return deptMapper.update(dept);
+	};
+
+	public int add(Dept dept) {
+		deptMapper.add(dept);
+		int maxid = dept.getDeptid();
+		return maxid;
+	};
+
+	public int delete(List<String> ids) {
+		return deptMapper.delete(ids);
+	};
+
 	public Dept findById(int deptid) {
 		return deptMapper.findById(deptid);
 	}

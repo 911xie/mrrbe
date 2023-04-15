@@ -10,8 +10,8 @@ public class InterceptorConfig implements WebMvcConfigurer {
 	@Override
 	public void addInterceptors(InterceptorRegistry registry) {
 		System.out.println("addInterceptors...");
-		registry.addInterceptor(jwtInterceptor()).addPathPatterns("/user/**", "/reserve/**") // 拦截所有请求，通过判断 token是否合法
-				.excludePathPatterns("/user/login", "/file/upload", "/bills", "/api");// 需要放行的方法
+		registry.addInterceptor(jwtInterceptor()).addPathPatterns("/user/**", "/reserve/**", "/dept/**") // 拦截所有请求，通过判断token是否合法
+				.excludePathPatterns("/user/login", "/file/upload", "/bills");// 需要放行的方法, "/api"
 	}
 
 	@Bean

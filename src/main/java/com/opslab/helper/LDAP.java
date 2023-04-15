@@ -19,11 +19,11 @@ public class LDAP {
 	private String FACTORY = "com.sun.jndi.ldap.LdapCtxFactory";
 	private String BASEDN = "DC=MMCZ,DC=MEKJPN,DC=NGNET";// "DC=mmcz,DC=mekjpn,DC=ngnet";
 	private LdapContext ctx = null;
-	private Hashtable env = null;
+	private Hashtable<String, String> env = null;
 	private Control[] connCtls = null;
 
 	private void LDAPConnect() {
-		env = new Hashtable();
+		env = new Hashtable<String, String>();
 		env.put(Context.INITIAL_CONTEXT_FACTORY, FACTORY);
 		env.put(Context.PROVIDER_URL, URL + BASEDN);
 		env.put(Context.SECURITY_AUTHENTICATION, "simple");
@@ -36,7 +36,7 @@ public class LDAP {
 			SearchControls searchCtls = new SearchControls();
 			searchCtls.setSearchScope(SearchControls.SUBTREE_SCOPE);
 			searchCtls.setCountLimit(1000);
-			String searchFilter = "sAMAccountName=XIE*";
+			String searchFilter = "sAMAccountName=XIEXIAOJUN";
 			// String searchFilter = "sAMAccountName=*";
 			// String searchFilter = "physicalDeliveryOfficeName=*";
 			String searchBase = BASEDN;

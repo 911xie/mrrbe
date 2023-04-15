@@ -7,7 +7,7 @@
         <result column="deptname" property="deptname"></result>
     </resultMap>
     <select id="findAll" resultMap="DeptResult">
-        SELECT * FROM dept
+        SELECT * FROM dept order by deptid desc
     </select>
     
     <select id="findById" resultMap="DeptResult" parameterType="java.lang.Integer" >

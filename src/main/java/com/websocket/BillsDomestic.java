@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -99,6 +100,7 @@ public class BillsDomestic implements Runnable {
 	}
 
 	private String sFactory = "";
+	private String factory = "";
 
 	public String getsFactory() {
 		return sFactory;
@@ -148,6 +150,7 @@ public class BillsDomestic implements Runnable {
 		Statement stmt = null;
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
+		factory = sFactory.trim();
 		try {
 			// 创建connection
 			conn = HikariAS400.getDataSource().getConnection();
@@ -194,36 +197,60 @@ public class BillsDomestic implements Runnable {
 			rs = pstmt.executeQuery();
 			ResultSetMetaData rsmd = rs.getMetaData();
 			JSONObject jsonObj = new JSONObject();
-			JSONArray jsonAry = new JSONArray();
+
 			Map<String, Object> map = new HashMap<String, Object>();
 
 			log.info("sql=" + sql);
 			rs = pstmt.executeQuery();
+
+			File file = new File(sPath + "record.json");
+			JSONObject fileObj = JSONObject.parseObject(FileUtil.read(file, "UTF-8"));
+			if (fileObj == null) {
+				fileObj = new JSONObject();
+			}
+
+			// JSONObject docASTORI = new JSONObject();
 			while (rs.next()) {
 				JSONObject docObj = new JSONObject();
 				docObj.put("ASTORI", rs.getString("ASTORI").trim());
 				docObj.put("ETPATN", rs.getString("ETPATN").trim());
 				docObj.put("ETPOTO", rs.getString("ETPOTO").trim());
-				jsonAry.add(docObj);
+				docObj.put("SEND", 0);
+
+				String fileName = rs.getString("ASTORI").trim() + "-" + factory + "-" + this.getsBegin() + "-"
+						+ this.getsEnd();// + "." + FilenameUtils.getExtension(BillsDomestic.XLS_TEMPLATE);
+
+				if (!fileObj.containsKey(rs.getString("ASTORI").trim())) {
+					JSONArray jsonAry = new JSONArray();
+					jsonAry.add(fileName);
+					docObj.put("FileNames", jsonAry);
+					fileObj.put(rs.getString("ASTORI").trim(), docObj);
+				} else {
+					JSONObject fnObj = (JSONObject) fileObj.get(rs.getString("ASTORI").trim());
+					JSONArray jsonAry = fnObj.getJSONArray("FileNames");
+					jsonAry.add(fileName);
+					docObj.put("FileNames", jsonAry);
+				}
+
+				// jsonAry.add(docASTORI);
 				// jsonObj.put(rs.getString("ASTORI").trim(), docObj);
+
 				map.put(rs.getString("ASTORI").trim(), docObj);
 				listTori.add(rs.getString("ASTORI").trim());
 			}
 			log.info("map.size=" + map.size());
-			jsonObj.put("begin", this.getsBegin());
-			jsonObj.put("end", this.getsEnd());
-			jsonObj.put("data", jsonAry);
+//			jsonObj.put("begin", this.getsBegin());
+//			jsonObj.put("end", this.getsEnd());
+//			jsonObj.put("data", jsonAry);
 
 			rs.close();
 			pstmt.close();
 			// 关闭connection
 			conn.close();
 
-			File file = new File(sPath + "record.json");
-			FileUtil.write(file, jsonObj.toString(), "UTF-8");
+			FileUtil.write(file, fileObj.toString(), "UTF-8");
 
-			JSONObject obj = JSONObject.parseObject(FileUtil.read(file, "UTF-8"));
-			log.info("aryyyyyyyyyyyy666=" + obj.get("data").toString());
+			// log.info("aryyyyyyyyyyyy666=" + obj.get("data").toString());
 			return map;
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -294,7 +321,7 @@ public class BillsDomestic implements Runnable {
 
 			jsonobj.put("listData", listData);
 			log.info("ttttttttttt" + jsonobj.toJSONString());
-			fillData(jsonobj, sPath + code + "-" + sBegin + "-" + sEnd + "."
+			fillData(jsonobj, sPath + code + "-" + factory + "-" + sBegin + "-" + sEnd + "."
 					+ FilenameUtils.getExtension(BillsDomestic.XLS_TEMPLATE));
 		} catch (Exception e) {
 			log.info("ddddddddddd" + code + e.getMessage());
@@ -570,6 +597,30 @@ public class BillsDomestic implements Runnable {
 		}
 	}
 
+	public void cleanSendFlag(String path) {
+		File jsonfile = new File(path + "record.json");
+		if (!jsonfile.exists()) {
+			log.info("error!!!transAndSend json文件不存在。");
+			return;
+		}
+
+		JSONObject fileObj = JSONObject.parseObject(FileUtil.read(jsonfile, "UTF-8"));
+		Iterator iter = fileObj.entrySet().iterator();
+		while (iter.hasNext()) {
+			Map.Entry entry = (Map.Entry) iter.next();
+			System.out.println(entry.getKey().toString() + ":" + entry.getValue().toString());
+			JSONObject item = (JSONObject) entry.getValue();
+			item.put("SEND", 0);
+		}
+		FileUtil.write(jsonfile, fileObj.toString(), "UTF-8");
+		try {
+			websckt.sendMessage("FIN|CLNSENDFLAG");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
 	public void transAndSend(String path) {
 		File file = new File(path);
 		File[] listFiles = file.listFiles();
@@ -581,60 +632,117 @@ public class BillsDomestic implements Runnable {
 			return;
 		}
 
-		JSONObject obj = JSONObject.parseObject(FileUtil.read(jsonfile, "UTF-8"));
-		String sBegin = obj.get("begin").toString();
-		String sEnd = obj.get("end").toString();
-		JSONArray objAry = obj.getJSONArray("data");
-
-		int nTotalPdf = 0;
-		for (int i = 0; i < listFiles.length; i++) {
-			String suffix = FilenameUtils.getExtension(listFiles[i].getName()).toLowerCase();
-			File f = listFiles[i];
-			if (f.isFile() && f.getName().indexOf("~$") != 0
-					&& suffix.equalsIgnoreCase(FilenameUtils.getExtension(BillsDomestic.XLS_TEMPLATE))) {
-				nTotalPdf++;
-			}
-		}
-
-		log.info("transAndSend jsonfilecnt=" + objAry.size() + ",inpathcnt=" + nTotalPdf);
-		if (nTotalPdf != objAry.size()) {
-			log.info("error!!!transAndSend 文件数量对不上。");
-			return;
-		}
+		JSONObject fileObj = JSONObject.parseObject(FileUtil.read(jsonfile, "UTF-8"));
+//		String sBegin = obj.get("begin").toString();
+//		String sEnd = obj.get("end").toString();
+//		JSONArray objAry = obj.getJSONArray("data");
+		System.out.println("111111111=" + fileObj.size());
+		Iterator iter = fileObj.entrySet().iterator();
 
 		try {
 			jacobInit();
-			for (int i = 0; i < objAry.size(); i++) {
-				JSONObject item = objAry.getJSONObject(i);
-				String baseName = item.getString("ASTORI") + "-" + sBegin + "-" + sEnd;
-				String srcFile = path + baseName + "." + FilenameUtils.getExtension(BillsDomestic.XLS_TEMPLATE);
-				String destFile = path + baseName + ".pdf";
-				File xlsfile = new File(path + baseName + "." + FilenameUtils.getExtension(BillsDomestic.XLS_TEMPLATE));
-				if (xlsfile.exists()) {
-					log.info("存在文件:" + baseName);
-					jacobXls2PDF(srcFile, destFile);
-					if (item.getString("ETPATN").length() > 0) {
-						log.info("发送邮件:" + item.getString("ASTORI") + "," + item.getString("ETPATN") + ","
-								+ item.getString("ETPOTO"));
-						sendMmczMail(item.getString("ASTORI"), item.getString("ETPATN"), item.getString("ETPOTO"),
-								destFile);//
+			int idx = 0;
+			int sendflag = 0;
+			while (iter.hasNext()) {
+				Map.Entry entry = (Map.Entry) iter.next();
+				System.out.println(entry.getKey().toString() + ":" + entry.getValue().toString());
+				JSONObject item = (JSONObject) entry.getValue();
+				JSONArray aryfile = (JSONArray) item.get("FileNames");
+
+				int send = (int) item.get("SEND");
+				if (send == 0) {
+					// xls转pdf文件
+					JSONArray attachfile = new JSONArray();
+
+					for (int i = 0; i < aryfile.size(); i++) {
+						String srcFile = path + aryfile.getString(i) + "."
+								+ FilenameUtils.getExtension(BillsDomestic.XLS_TEMPLATE);
+						String destFile = path + aryfile.getString(i) + ".pdf";
+						File xlsfile = new File(srcFile);
+						if (xlsfile.exists()) {
+							log.info("存在文件:" + srcFile);
+							jacobXls2PDF(srcFile, destFile);
+							attachfile.add(destFile);
+						}
 					}
-					websckt.sendMessage(String.format("SYN|%02d|生成文件[%s](%d/%d)", ((i + 1) * 100 / nTotalPdf),
-							baseName + ".pdf", (i + 1), nTotalPdf));
+					// 发邮件
+					log.info("ASTORIiiiiiii:" + item.getString("ETPATN") + "," + item.getString("ETPOTO"));
+					sendMmczMail(item.getString("ASTORI"), item.getString("ETPATN"), item.getString("ETPOTO"),
+							attachfile);
+					// sendMmczMail(item.getString("ASTORI"), "xiaojunxie@mektec.com.cn",
+					// "911xie@163.com", attachfile);
+					item.put("SEND", 1);
+					websckt.sendMessage(String.format("SYN|%02d|邮件已发送至供应商[%s](%d/%d)",
+							((idx + 1) * 100 / fileObj.size()), item.getString("ASTORI"), (idx + 1), fileObj.size()));
+					idx++;
+					sendflag = 1;
 				}
 			}
 
 			jacobUnInit();
-			websckt.sendMessage("FIN|2PDF");
+			FileUtil.write(jsonfile, fileObj.toString(), "UTF-8");
+			String sendmsg = sendflag == 1 ? "FIN|2PDF" : "FIN|SEND1";
+			websckt.sendMessage(sendmsg);
 
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		log.info("spare.1111111111=" + (System.currentTimeMillis() - begin));
+
+		System.out.println("222222222=" + fileObj.size());
+
+//		int nTotalPdf = 0;
+//		for (int i = 0; i < listFiles.length; i++) {
+//			String suffix = FilenameUtils.getExtension(listFiles[i].getName()).toLowerCase();
+//			File f = listFiles[i];
+//			if (f.isFile() && f.getName().indexOf("~$") != 0
+//					&& suffix.equalsIgnoreCase(FilenameUtils.getExtension(BillsDomestic.XLS_TEMPLATE))) {
+//				nTotalPdf++;
+//			}
+//		}
+//
+//		log.info("transAndSend jsonfilecnt=" + objAry.size() + ",inpathcnt=" + nTotalPdf);
+//		if (nTotalPdf != objAry.size()) {
+//			log.info("error!!!transAndSend 文件数量对不上。");
+//			return;
+//		}
+//
+//		try {
+//			jacobInit();
+//			for (int i = 0; i < objAry.size(); i++) {
+//				JSONObject item = objAry.getJSONObject(i);
+//				String baseName = item.getString("ASTORI") + "-" + sBegin + "-" + sEnd;
+//				String srcFile = path + baseName + "." + FilenameUtils.getExtension(BillsDomestic.XLS_TEMPLATE);
+//				String destFile = path + baseName + ".pdf";
+//				File xlsfile = new File(path + baseName + "." + FilenameUtils.getExtension(BillsDomestic.XLS_TEMPLATE));
+//				if (xlsfile.exists()) {
+//					log.info("存在文件:" + baseName);
+//					jacobXls2PDF(srcFile, destFile);
+//					if (item.getString("ETPATN").length() > 0) {
+//						log.info("发送邮件:" + item.getString("ASTORI") + "," + item.getString("ETPATN") + ","
+//								+ item.getString("ETPOTO"));
+//						JSONArray aryfile = new JSONArray();
+//						aryfile.add(destFile);
+//						sendMmczMail(item.getString("ASTORI"), item.getString("ETPATN"), item.getString("ETPOTO"),
+//								aryfile);//
+//					}
+//					websckt.sendMessage(String.format("SYN|%02d|生成文件[%s](%d/%d)", ((i + 1) * 100 / nTotalPdf),
+//							baseName + ".pdf", (i + 1), nTotalPdf));
+//				}
+//			}
+//
+//			jacobUnInit();
+//			websckt.sendMessage("FIN|2PDF");
+//
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//		log.info("spare.1111111111=" + (System.currentTimeMillis() - begin));
+
 	}
 
-	public void sendMmczMail(String supplierCode, String to, String cc, String filename) {
+	public void sendMmczMail(String supplierCode, String to, String cc, JSONArray aryfile) {
 		SendMail mail = new SendMail();
 		mail.setHost("mmczsmtp.mmcz.mekjpn.ngnet");
 		mail.setAuth(false);
@@ -643,11 +751,11 @@ public class BillsDomestic implements Runnable {
 		mail.setFrom(this.sEMailAddr);
 		mail.setTo(to);
 		String cctarget = cc.trim().length() == 0 ? this.sEMailAddr : cc + "," + this.sEMailAddr;
-		mail.setCc(cctarget);
+		mail.setCc(cc);
 		log.info("sendMmczMail...cc=" + cctarget);
 		mail.setTitle("珠海紫翔对账单" + supplierCode);
 		mail.setContent("请查收附件珠海紫翔的对账单，若确认没有问题请及时提供发票,谢谢！");
-		mail.setAttachFile(filename);
+		mail.setAttachFile(aryfile);
 		// mail.setImageFile("d:\\mpechart.png");
 		mail.sendMail();
 	}
@@ -711,6 +819,16 @@ public class BillsDomestic implements Runnable {
 				log.info("'" + f.getName() + "',");
 			}
 		}
+
+		BillsDomestic bills = new BillsDomestic();
+		// bills.genToriData("0523", "20220801", "20220815");
+		bills.setsEMailAddr("mmcz_monthlystatement@mektec.com.cn");
+		JSONArray aryfile = new JSONArray();
+		aryfile.add("D:\\eclipse-workspace\\mrrbe\\Reconcile.xltx");
+		aryfile.add("D:\\eclipse-workspace\\mrrbe\\Reconcile3.xltx");
+		// bills.sendMmczMail("0001", "xiaojunxie@mektec.com.cn",
+		// "Xie.XiaoJun@mektec.nokgrp.com", aryfile);
+		bills.sendMmczMail("0001", "Xie.XiaoJun@mektec.nokgrp.com", "Xie.XiaoJun@mektec.nokgrp.com", aryfile);
 	}
 
 }

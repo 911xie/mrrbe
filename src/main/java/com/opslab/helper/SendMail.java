@@ -19,6 +19,8 @@ import javax.mail.internet.MimeMultipart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.alibaba.fastjson.JSONArray;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -37,7 +39,8 @@ public class SendMail {
 	private String cc;
 	private String title;
 	private String content;
-	private String attachFile = "";
+	// private String attachFile = "";
+	private JSONArray attachFile = new JSONArray();
 	private String imageFile = "";
 
 	public void sendMail() {
@@ -46,7 +49,6 @@ public class SendMail {
 		props.put("mail.smtp.host", host);// 指定SMTP服务器
 		// props.put("mail.smtp.port", String.valueOf(port));
 		props.put("mail.smtp.auth", String.valueOf(auth));// 指定是否需要SMTP验证,为false时，不用指定用户名、密码
-		log.info("dddddddd " + String.valueOf(auth));
 
 		try {
 			// Session mailSession = Session.getDefaultInstance(props);
@@ -68,7 +70,7 @@ public class SendMail {
 				}
 			});
 
-			mailSession.setDebug(true);// 是否在控制台显示debug信息
+			// mailSession.setDebug(true);// 是否在控制台显示debug信息
 
 			MimeMessage message = new MimeMessage(mailSession);
 			message.setFrom(new InternetAddress(from));// 发件人
@@ -125,9 +127,9 @@ public class SendMail {
 				multipart.addBodyPart(bp);
 			}
 
-			if (attachFile.length() > 0) {
+			for (int i = 0; i < attachFile.size(); i++) {
 				bp = new MimeBodyPart();
-				FileDataSource fileds = new FileDataSource(attachFile);
+				FileDataSource fileds = new FileDataSource(attachFile.getString(i));
 				bp.setDataHandler(new DataHandler(fileds));
 				bp.setFileName(fileds.getName());
 				multipart.addBodyPart(bp);
@@ -171,9 +173,12 @@ public class SendMail {
 //				+ "			<td width=\"104\" style=\"border-style:solid solid solid solid;border-color:#5C87B2;border-width:1px 1px 1px 1px;padding:1px 1px;\">\r\n"
 //				+ "				<div align=\"center\"><span style=\" font-size:12pt;color:#4f4f4f\">0%</span></div>\r\n"
 //				+ "			</td>\r\n" + "	</tr>\r\n" + "</table>";// "附件是对账文件";
-		sendMail.content = "附件是对账文件";
+		sendMail.content = "附件是对账文件1";
 		sendMail.imageFile = "D:\\mpechart.png";
-		sendMail.attachFile = "D:\\eclipse-workspace\\mrrbe\\Reconcile.xltx";
+		JSONArray ary = new JSONArray();
+		ary.add("D:\\eclipse-workspace\\mrrbe\\Reconcile.xltx");
+		ary.add("D:\\eclipse-workspace\\mrrbe\\Reconcile3.xltx");
+		sendMail.attachFile = ary;
 		sendMail.sendMail();
 
 	}

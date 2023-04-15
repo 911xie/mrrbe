@@ -584,9 +584,10 @@ public class BillsAbroad implements Runnable {
 		sheetAt.getRow(0).getCell(0).setCellValue(jsonobj.getString("MVTMEK"));// Master.MVTMEK"MIN AIK PRECISION
 																				// INDUSTRIAL CO., LTD."
 		String str = jsonobj.getString("MVADDK");// "中国福建省福州市福田区坦洲乡三乡镇一七村台湾街道办桃园观音工业区国瑞路２号";// Master.MVADDK
-		sheetAt.getRow(1).getCell(0).setCellValue(getStr(str, 0, 15));
-		sheetAt.getRow(2).getCell(0).setCellValue(getStr(str, 15, 30));
-		sheetAt.getRow(3).getCell(0).setCellValue(getStr(str, 30, 45));
+//		sheetAt.getRow(1).getCell(0).setCellValue(getStr(str, 0, 15));
+//		sheetAt.getRow(2).getCell(0).setCellValue(getStr(str, 15, 30));
+//		sheetAt.getRow(3).getCell(0).setCellValue(getStr(str, 30, 45));
+		sheetAt.getRow(1).getCell(0).setCellValue(str);
 		sheetAt.getRow(2).getCell(11).setCellValue(jsonobj.getString("LastInvNo"));// Slave.ASINNO
 		sheetAt.getRow(3).getCell(11).setCellValue(jsonobj.getString("LastDate"));// Slave.ASKDAY
 
@@ -830,8 +831,10 @@ public class BillsAbroad implements Runnable {
 					if (item.getString("ETPATN").length() > 0) {
 						log.info("发送邮件:" + item.getString("ASTORI") + "," + item.getString("ETPATN") + ","
 								+ item.getString("ETPOTO"));
+						JSONArray aryfile = new JSONArray();
+						aryfile.add(destFile);
 						sendMmczMail(item.getString("ASTORI"), item.getString("ETPATN"), item.getString("ETPOTO"),
-								destFile);//
+								aryfile);//
 					}
 					websckt.sendMessage(String.format("SYN|%02d|生成文件[%s](%d/%d)", ((i + 1) * 100 / nTotalPdf),
 							baseName + ".pdf", (i + 1), nTotalPdf));
@@ -848,7 +851,7 @@ public class BillsAbroad implements Runnable {
 		log.info("spare.1111111111=" + (System.currentTimeMillis() - begin));
 	}
 
-	public void sendMmczMail(String supplierCode, String to, String cc, String filename) {
+	public void sendMmczMail(String supplierCode, String to, String cc, JSONArray aryfile) {
 		SendMail mail = new SendMail();
 		mail.setHost("mmczsmtp.mmcz.mekjpn.ngnet");
 		mail.setAuth(false);
@@ -861,7 +864,7 @@ public class BillsAbroad implements Runnable {
 		log.info("sendMmczMail...cc=" + cctarget);
 		mail.setTitle("The Statement of Mektec Manufacturing Corp(Zhuhai)LTD " + supplierCode);
 		mail.setContent("Statement as attached, please confirm and sign your company seal back. Best regards，");
-		mail.setAttachFile(filename);
+		mail.setAttachFile(aryfile);
 		// mail.setImageFile("d:\\mpechart.png");
 		mail.sendMail();
 	}
@@ -911,8 +914,10 @@ public class BillsAbroad implements Runnable {
 		BillsAbroad bills = new BillsAbroad();
 		// bills.genToriData("0523", "20220801", "20220815");
 		bills.setsEMailAddr("mmcz_monthlystatement@mektec.com.cn");
-		bills.sendMmczMail("0001", "xiaojunxie@mektec.com.cn", "mengmenggong@mektec.com.cn",
-				"D:\\eclipse-workspace\\mrrbe\\Reconcile.xltx");
+		JSONArray aryfile = new JSONArray();
+		aryfile.add("D:\\eclipse-workspace\\mrrbe\\Reconcile.xltx");
+		aryfile.add("D:\\eclipse-workspace\\mrrbe\\Reconcile3.xltx");
+		bills.sendMmczMail("0001", "xiaojunxie@mektec.com.cn", "911xie@163.com", aryfile);
 
 	}
 

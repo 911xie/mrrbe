@@ -20,11 +20,11 @@ import com.mmcz.entity.User;
 public interface ReserveMapper {
 	@Select("select * from reserve")
 	@Results(id = "ReserveFindAll", value = { 
-	@Result(id = true, column = "id", property = "id"),
-	@Result(column = "title", property = "title"), 
-	@Result(column = "content", property = "content"),
-	@Result(column = "begin", property = "begin"), 
-	@Result(column = "create", property = "create"),
+//	@Result(id = true, column = "id", property = "id"),
+//	@Result(column = "title", property = "title"), 
+//	@Result(column = "content", property = "content"),
+//	@Result(column = "begin", property = "begin"), 
+//	@Result(column = "create", property = "create"),
 	@Result(property = "user", column = "userid", 
 	one = @One(select = "com.mmcz.Mapper.UserMapper.getUserByUserId", fetchType = FetchType.DEFAULT)), 
 	@Result(property = "room", column = "roomid", 
@@ -33,11 +33,11 @@ public interface ReserveMapper {
 
 	@Select("select * from reserve where id=#{reserveid}")
 	@Results(id = "ReserveFindById", value = { 
-	@Result(id = true, column = "id", property = "id"),
-	@Result(column = "title", property = "title"), 
-	@Result(column = "content", property = "content"),
-	@Result(column = "begin", property = "begin"), 
-	@Result(column = "create", property = "create"),
+//	@Result(id = true, column = "id", property = "id"),
+//	@Result(column = "title", property = "title"), 
+//	@Result(column = "content", property = "content"),
+//	@Result(column = "begin", property = "begin"), 
+//	@Result(column = "create", property = "create"),
 	@Result(property = "user", column = "userid", 
 	one = @One(select = "com.mmcz.Mapper.UserMapper.getUserByUserId", fetchType = FetchType.DEFAULT)), 
 	@Result(property = "room", column = "roomid", 

@@ -285,6 +285,10 @@ public class Service {
 			Service.delAllFile(path);
 			work.cleanFin();
 			break;
+		case "CleanSendFlag":
+			log.info("收到用户cleanSendFlag命令" + path);
+			work.cleanSendFlag(path);
+			break;
 		default:
 			log.info("unknow cmd!");
 			break;

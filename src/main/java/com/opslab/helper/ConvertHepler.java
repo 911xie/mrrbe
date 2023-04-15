@@ -22,7 +22,8 @@ public final class ConvertHepler {
 		byte[] b = new byte[2];
 		for (int i = 0; i < b.length; i++) {
 			// 将最低位保存在最低位
-			b[i] = new Integer(temp & 0xff).byteValue();
+			// b[i] = new Integer(temp & 0xff).byteValue();
+			b[i] = Integer.valueOf(temp & 0xff).byteValue();
 			// 向右移8位
 			temp = temp >> 8;
 		}
@@ -118,7 +119,8 @@ public final class ConvertHepler {
 		long temp = number;
 		byte[] b = new byte[8];
 		for (int i = 0; i < b.length; i++) {
-			b[i] = new Long(temp & 0xff).byteValue();
+			// b[i] = new Long(temp & 0xff).byteValue();
+			b[i] = Long.valueOf(temp & 0xff).byteValue();
 			// 将最低位保存在最低位
 			temp = temp >> 8;
 			// 向右移8位

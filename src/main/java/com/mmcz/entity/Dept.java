@@ -3,6 +3,25 @@ package com.mmcz.entity;
 public class Dept {
 
 	private Integer deptid;
+	private Integer parentid;
+
+	public Integer getParentid() {
+		return parentid;
+	}
+
+	public void setParentid(Integer parentid) {
+		this.parentid = parentid;
+	}
+
+	public Integer getLevel() {
+		return level;
+	}
+
+	public void setLevel(Integer level) {
+		this.level = level;
+	}
+
+	private Integer level;
 	private String deptname;
 
 	public Integer getDeptid() {
@@ -26,8 +45,12 @@ public class Dept {
 		this.deptname = deptname;
 	}
 
+	public Dept() {
+	}
+
 	@Override
 	public String toString() {
-		return "Dept{" + "deptid=" + deptid + ", deptname='" + deptname + '\'' + '}';
+		return "Dept{" + "deptid=" + deptid + ", parentid=" + parentid + ", level=" + level + ", deptname='" + deptname
+				+ '\'' + '}';
 	}
 }

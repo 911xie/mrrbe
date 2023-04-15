@@ -59,4 +59,14 @@ mybatis:
   configuration:
     map-underscore-to-camel-case: true
 
+matserver:
+  servers:
+    - 192.168.133.7
+    - 192.168.139.242
+    - 192.168.138.10
+    - 192.168.138.245
+    - 192.168.138.1
+    - 192.168.138.8
+    - 192.168.138.9    
+
 
